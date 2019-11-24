@@ -1,0 +1,6 @@
+{
+    "python.pythonPath": "C:\\Users\\GeraldSpenlingwimmer\\Anaconda3\\envs\\horus\\python.exe",
+    "appService.showBuildDuringDeployPrompt": false,
+    "appService.defaultWebAppToDeploy": "/subscriptions/5719835c-f772-4c42-ad66-02fed36b2526/resourceGroups/PytonTest/providers/Microsoft.Web/sites/RestEasy",
+    "appService.deploySubpath": ""
+}
