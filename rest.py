@@ -18,7 +18,7 @@ sickness = {}
 requests = []
 
 @restService.route("/")
-def hello():
+def default():
     return "The REST service is up"
 
 @restService.route("/authenticate", methods=['POST'])
@@ -70,11 +70,10 @@ def getSick():
         return "ERROR: invalid parameters", 400
     if len(sickness[key]) < 1:
         return "No entry found", 200
-    
 
     return sickness[key][-1], 200
 
-@restService.route("/requests", methods=['GET'])
+@restService.route("/dialogflow/requests", methods=['GET'])
 def getRequests():
     return asJsonResponse(requests)
 
