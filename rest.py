@@ -16,6 +16,7 @@ users = {
 sickness = {}
 
 requests = []
+watson_requests = []
 
 @restService.route("/")
 def default():
@@ -77,6 +78,10 @@ def getSick():
 def getRequests():
     return asJsonResponse(requests)
 
+@restService.route("/watson/requests", methods=['GET'])
+def getWatsonRequests():
+    return asJsonResponse(watson_requests)
+
 @restService.route("/sick/all", methods=['GET'])
 def getSickAll():
     return asJsonResponse(sickness)
@@ -122,3 +127,37 @@ def asJsonResponse(data):
 def dialogflowWebhook():
     # return response
     return asJsonResponse(dialogflowHandler())
+
+
+def watsonHandler():
+    # build a request object
+    req = request.get_json(force=True)
+
+    # fetch action from json
+    intent = req.get('intent')
+
+    if (intent == "Sickness"):
+
+        name = req.get("person_name")
+        dob = extractDob(req.get("dob"))
+
+        watson_requests.append(req)
+        key = name.lower() + dob
+        today = date.today()
+        formatted_date = today.strftime("%d.%m.%Y")
+        
+        if not(key in users):
+            return {'error': 'Die eingegebenen Daten sind ungültig.'}
+        
+        if not(key in sickness):
+            sickness[key] = []
+
+        if not(formatted_date in sickness[key]):
+            sickness[key].append(formatted_date)
+        
+        return {'OK': 'Gute Besserung'}
+
+# create a route for webhook
+@restService.route('/watson/webhook', methods=['POST'])
+def watsonWebhook():
+    return asJsonResponse(watsonHandler())
