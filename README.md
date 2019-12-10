@@ -16,7 +16,13 @@
   - Get all sickness entries, for testing purpose only
   
 - "/dialogflow/requests", methods=['GET']
-  - Look at the dialogflow requests in detail, for develoment purpose only
+  - Look at the Dialogflow requests in detail, for develoment purpose only
   
 - '/dialogflow/webhook', methods=['GET', 'POST']
   - Entry point for all Dialogflow requests
+
+- '/watson/webhook', methods=['POST']
+  - Entry point for all Watson requests
+
+- '/watson/requests', methods=['GET']
+  - Look at the Watson requests in detail, for develoment purpose only
