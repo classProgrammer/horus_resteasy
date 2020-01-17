@@ -5,63 +5,158 @@ import re
 
 restService = Flask(__name__)
 
-users = {
-    "hans wurst27.04.1997": True,
-    "gerald wimmer31.08.1993": True,
-    "anna fakename14.12.1987": True,
-    "harry potter24.05.1965": True,
-    "franz bauer01.01.2000": True
-}
-
+# ----------------------------------------------
+# -------------------- DATA --------------------
+# ----------------------------------------------
+dialogflow_request = [""]
+watson_request = [""]
 sickness = {}
+users = [
+  {
+    "name": "hans wurst",
+    "dob": "27.04.1997",
+    "group": "marketing"
+  },
+  {
+    "name": "gerald wimmer",
+    "dob": "31.08.1993",
+    "group": "hr"
+  },
+  {
+    "name": "anna fakename",
+    "dob": "14.12.1987",
+    "group": "management"
+  },
+  {
+    "name": "harry potter",
+    "dob": "24.05.1965",
+    "group": "defense"
+  },
+  {
+    "name": "franz bauer",
+    "dob": "01.01.2000",
+    "group": "maintenance"
+  }
+]
+# ----------------------------------------------
+# --------------- UTILITY METHODS --------------
+# ----------------------------------------------
+def findByName(name):
+  return [elem for elem in users if elem["name"] == name]
 
-requests = []
-watson_requests = []
+def now():
+    return date.today().strftime("%d.%m.%Y")
 
+def asJsonResponse(data):
+    return make_response(jsonify(data))
+
+def extractDob(date):
+    pattern = re.compile(r"[-T+]")
+    return '.'.join(reversed(pattern.split(date)[0:3]))
+
+# ----------------------------------------------
+# ----------------- STARTUP --------------------
+# ----------------------------------------------
 @restService.route("/")
 def default():
     return "The REST service is up"
 
-@restService.route("/authenticate", methods=['POST'])
-def authenticate():
-
-    data = request.get_json()
-    key = data['name'].lower() + data['dob']
-    
-    if not(key in users):
-        return "ERROR: invalid parameters", 400
-
-    return "", 200
-    
-@restService.route("/add/user", methods=['POST'])
-def addUser():
-  
-    data = request.get_json()
-    key = data['name'].lower() + data['dob']
-    
-    if not(key in users):
-        users[key] = True
-
-    return "Resource created", 202
-
+# ----------------------------------------------
+# ------------------- RASA ---------------------
+# ----------------------------------------------
+# entry point for Rasa call
 @restService.route("/sick", methods=['POST'])
 def postSick():
-    data = request.get_json()
-    key = data['name'].lower() + data['dob']
-    today = date.today()
-    formatted_date = today.strftime("%d.%m.%Y")
-    
-    if not(key in users):
+    data  = request.get_json()
+    name  = data['name'].lower()
+    entry = findByName(name)
+
+    if (len(entry) < 1):
         return "ERROR: invalid parameters", 400
 
-    if not(key in sickness):
-        sickness[key] = []
+    today = now()
 
-    if not(formatted_date in sickness[key]):
-        sickness[key].append(formatted_date)
+    if not(name in sickness):
+        sickness[name] = []
 
-    return formatted_date, 200
+    if not(today in sickness[name]):
+        sickness[name].append(today)
 
+    return {
+        "name": data['name'],
+        "group": entry[0]["group"],
+        "dob": entry[0]["dob"],
+        "sick_on": today
+    }, 200
+
+# ----------------------------------------------
+# ---------------- DIALOGFLOW ------------------
+# ----------------------------------------------
+def dialogflowHandler():
+    req = request.get_json(force=True)
+    dialogflow_request[0] = req #DEV
+    intent = req.get('queryResult').get('intent').get("displayName")
+
+    if (intent == "Sickness"):
+        params = req.get('queryResult').get('parameters')
+        name = params.get("name").get("name").lower()
+        today = now()
+        if (len(findByName(name)) < 1):
+            return {'fulfillmentText': 'Die eingegebenen Daten sind ungültig. Die Konversation wird zurückgesetzt'}
+        
+        if not(name in sickness):
+            sickness[name] = []
+
+        if not(today in sickness[name]):
+            sickness[name].append(today)
+        
+        return {}
+
+    return {'fulfillmentText': f'Intent {intent} unbekannt.'}
+
+# dialogflow request entry point
+@restService.route('/dialogflow/webhook', methods=['GET', 'POST'])
+def dialogflowWebhook():
+    return asJsonResponse(dialogflowHandler())
+
+# ----------------------------------------------
+# ------------------ WATSON --------------------
+# ----------------------------------------------  
+def watsonHandler():
+    req = request.get_json(force=True)
+    intent = req.get('intent')
+    watson_request[0] = req #DEV
+    if (intent == "Sickness"):
+
+        name = req.get("person_name").lower()
+        today = now()
+        
+        if (len(findByName(name)) < 1):
+            return {'error': 'Die eingegebenen Daten sind ungültig.'}
+        
+        if not(name in sickness):
+            sickness[name] = []
+
+        if not(today in sickness[name]):
+            sickness[name].append(today)
+        
+        return {'OK': f'Gute Besserung {req.get("person_name")}!'}
+
+    return {'error': f'Intent {intent} unbekannt.'}
+
+# watson request entry point
+@restService.route('/watson/webhook', methods=['POST'])
+def watsonWebhook():
+    return asJsonResponse(watsonHandler())
+
+# ----------------------------------------------
+# -------------- DEVELOPMENT -------------------
+# ----------------------------------------------
+@restService.route("/sick/all", methods=['GET'])
+def getSickAll():
+    return asJsonResponse(sickness), 200
+
+# For dev purpose/check
 @restService.route("/sick", methods=['GET'])
 def getSick():
     data = request.get_json()
@@ -74,90 +169,11 @@ def getSick():
 
     return sickness[key][-1], 200
 
+# for dev purpose, to check what the framewokrs send
 @restService.route("/dialogflow/requests", methods=['GET'])
 def getRequests():
-    return asJsonResponse(requests)
+    return asJsonResponse(dialogflow_request), 200
 
 @restService.route("/watson/requests", methods=['GET'])
 def getWatsonRequests():
-    return asJsonResponse(watson_requests)
-
-@restService.route("/sick/all", methods=['GET'])
-def getSickAll():
-    return asJsonResponse(sickness)
-
-def extractDob(date):
-    pattern = re.compile(r"[-T+]")
-    return '.'.join(reversed(pattern.split(date)[0:3]))
-
-def dialogflowHandler():
-    # build a request object
-    req = request.get_json(force=True)
-
-    # fetch action from json
-    intent = req.get('queryResult').get('intent').get("displayName")
-
-    if (intent == "Sickness"):
-        params = req.get('queryResult').get('parameters')
-        name = params.get("name").get("name")
-        dob = extractDob(params.get("dob"))
-
-        requests.append(req)
-        key = name.lower() + dob
-        today = date.today()
-        formatted_date = today.strftime("%d.%m.%Y")
-        
-        if not(key in users):
-            return {'fulfillmentText': 'Die eingegebenen Daten sind ungültig. Die Konversation wird zurückgesetzt'}
-        
-        if not(key in sickness):
-            sickness[key] = []
-
-        if not(formatted_date in sickness[key]):
-            sickness[key].append(formatted_date)
-        
-        return {}
-
-
-def asJsonResponse(data):
-    return make_response(jsonify(data))
-
-# create a route for webhook
-@restService.route('/dialogflow/webhook', methods=['GET', 'POST'])
-def dialogflowWebhook():
-    # return response
-    return asJsonResponse(dialogflowHandler())
-
-
-def watsonHandler():
-    # build a request object
-    req = request.get_json(force=True)
-
-    # fetch action from json
-    intent = req.get('intent')
-
-    if (intent == "Sickness"):
-
-        name = req.get("person_name")
-        dob = extractDob(req.get("dob"))
-
-        watson_requests.append(req)
-        key = name.lower() + dob
-        today = date.today()
-        formatted_date = today.strftime("%d.%m.%Y")
-        
-        if not(key in users):
-            return {'error': 'Die eingegebenen Daten sind ungültig.'}
-        
-        if not(key in sickness):
-            sickness[key] = []
-
-        if not(formatted_date in sickness[key]):
-            sickness[key].append(formatted_date)
-        
-        return {'OK': 'Gute Besserung'}
-
-# create a route for webhook
-@restService.route('/watson/webhook', methods=['POST'])
-def watsonWebhook():
-    return asJsonResponse(watsonHandler())
+    return asJsonResponse(watson_request), 200
