@@ -2,6 +2,16 @@ from flask import Flask, request, make_response, jsonify, abort
 import sys
 from datetime import date
 import re
+import pymongo
+import os # for environment variables
+from bson import json_util
+
+mongo_url =  "mongodb://" + os.environ['MONGODB_NAME'] + ":" + \
+    os.environ['MONGODB_PASS'] + "@" + \
+    os.environ['MONGODB_LINK'] + "?ssl=true&replicaSet=HorusMongoDB-shard-0&authSource=admin&retryWrites=true&w=majority"
+client = pymongo.MongoClient(mongo_url)
+
+db = client.horus
 
 restService = Flask(__name__)
 
@@ -11,38 +21,12 @@ restService = Flask(__name__)
 dialogflow_request = [""]
 watson_request = [""]
 sickness = {}
-users = [
-  {
-    "name": "hans wurst",
-    "dob": "27.04.1997",
-    "group": "marketing"
-  },
-  {
-    "name": "gerald wimmer",
-    "dob": "31.08.1993",
-    "group": "hr"
-  },
-  {
-    "name": "anna fakename",
-    "dob": "14.12.1987",
-    "group": "management"
-  },
-  {
-    "name": "harry potter",
-    "dob": "24.05.1965",
-    "group": "defense"
-  },
-  {
-    "name": "franz bauer",
-    "dob": "01.01.2000",
-    "group": "maintenance"
-  }
-]
+
 # ----------------------------------------------
 # --------------- UTILITY METHODS --------------
 # ----------------------------------------------
 def findByName(name):
-  return [elem for elem in users if elem["name"] == name]
+  return db.user.find({"name": name})
 
 def now():
     return date.today().strftime("%d.%m.%Y")
