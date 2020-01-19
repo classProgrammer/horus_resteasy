@@ -20,7 +20,6 @@ restService = Flask(__name__)
 # ----------------------------------------------
 dialogflow_request = [""]
 watson_request = [""]
-sickness = {}
 
 # ----------------------------------------------
 # --------------- UTILITY METHODS --------------
@@ -53,6 +52,7 @@ def default():
 def postSick():
     data  = request.get_json()
     name  = data['name'].lower()
+
     entry = findByName(name)
 
     if (len(entry) < 1):
@@ -144,14 +144,19 @@ def getSickAll():
 @restService.route("/sick", methods=['GET'])
 def getSick():
     data = request.get_json()
-    key = data['name'].lower() + data['dob']
-    
-    if not(key in sickness):
-        return "ERROR: invalid parameters", 400
-    if len(sickness[key]) < 1:
-        return "No entry found", 200
+    name = data['name']
 
-    return sickness[key][-1], 200
+    user = findByName(name)
+
+    if user is None or user.count() == 0:
+        return "ERROR: invalid parameters", 400
+
+    sicknesses = db.sickness.find({"user": user.next()['_id']})
+
+    if sicknesses.count() == 0:
+        return "No entry found", 200
+    else:
+        return json_util.dumps(sicknesses)
 
 # for dev purpose, to check what the framewokrs send
 @restService.route("/dialogflow/requests", methods=['GET'])
