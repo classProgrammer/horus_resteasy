@@ -25,7 +25,25 @@ watson_request = [""]
 # --------------- UTILITY METHODS --------------
 # ----------------------------------------------
 def findByName(name):
-  return db.user.find({"name": name})
+   return db.user.find({"name": name})
+
+def addSicknessToUser(name, date):
+    entry = findByName(name)
+
+    if entry is None or entry.count() == 0:
+        return None
+
+    user = entry.next()
+
+    db.sickness.update_one(
+        { 'user': user['_id']},
+        { '$addToSet': {
+                'sickdays': date
+            }
+        },
+        True) #upsert
+
+    return user
 
 def now():
     return date.today().strftime("%d.%m.%Y")
@@ -52,22 +70,12 @@ def default():
 def postSick():
     data  = request.get_json()
     name  = data['name'].lower()
-
-    entry = findByName(name)
-
-    if entry is None or entry.count() == 0:
-        return "ERROR: invalid parameters", 400
-
-    user = entry.next()
     today = now()
 
-    db.sickness.find_one_and_update(
-        { 'user': user['_id']},
-        { '$addToSet': {
-                'sickdays': today
-            }
-        }
-    )
+    user = addSicknessToUser(name, today)
+
+    if user is None:
+        return "ERROR: invalid parameters", 400
 
     return {
         "name": user['name'],
