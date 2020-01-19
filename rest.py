@@ -126,14 +126,10 @@ def watsonHandler():
         name = req.get("person_name").lower()
         today = now()
         
-        if (len(findByName(name)) < 1):
-            return {'error': 'Die eingegebenen Daten sind ungültig.'}
-        
-        if not(name in sickness):
-            sickness[name] = []
+        user = addSicknessToUser(name, today)
 
-        if not(today in sickness[name]):
-            sickness[name].append(today)
+        if user is None:
+            return {'error': 'Die eingegebenen Daten sind ungültig.'}
         
         return {'OK': f'Gute Besserung {req.get("person_name")}!'}
 
