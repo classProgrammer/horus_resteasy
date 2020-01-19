@@ -138,7 +138,31 @@ def watsonWebhook():
 # ----------------------------------------------
 @restService.route("/sick/all", methods=['GET'])
 def getSickAll():
-    return asJsonResponse(sickness), 200
+    sicknesses = db.sickness.aggregate([
+        {
+            '$lookup': {
+                'from': 'user',
+                'localField': 'user',
+                'foreignField': '_id',
+                'as': 'userobj'
+            }
+        }, {
+            '$project': {
+                'user': {
+                    '$arrayElemAt': [
+                        '$userobj', 0
+                    ]
+                },
+                'sickdays': 1
+            }
+        }
+    ])
+    response = {}
+
+    for sick_user in sicknesses:
+        response[sick_user['user']['name']] = sick_user['sickdays']
+
+    return asJsonResponse(response), 200
 
 # For dev purpose/check
 @restService.route("/sick", methods=['GET'])
