@@ -55,21 +55,24 @@ def postSick():
 
     entry = findByName(name)
 
-    if (len(entry) < 1):
+    if entry is None or entry.count() == 0:
         return "ERROR: invalid parameters", 400
 
+    user = entry.next()
     today = now()
 
-    if not(name in sickness):
-        sickness[name] = []
-
-    if not(today in sickness[name]):
-        sickness[name].append(today)
+    db.sickness.find_one_and_update(
+        { 'user': user['_id']},
+        { '$addToSet': {
+                'sickdays': today
+            }
+        }
+    )
 
     return {
-        "name": data['name'],
-        "group": entry[0]["group"],
-        "dob": entry[0]["dob"],
+        "name": user['name'],
+        "group": user["group"],
+        "dob": user["dob"],
         "sick_on": today
     }, 200
 
