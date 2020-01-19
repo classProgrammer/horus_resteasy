@@ -96,14 +96,11 @@ def dialogflowHandler():
         params = req.get('queryResult').get('parameters')
         name = params.get("name").get("name").lower()
         today = now()
-        if (len(findByName(name)) < 1):
-            return {'fulfillmentText': 'Die eingegebenen Daten sind ungültig. Die Konversation wird zurückgesetzt'}
-        
-        if not(name in sickness):
-            sickness[name] = []
 
-        if not(today in sickness[name]):
-            sickness[name].append(today)
+        user = addSicknessToUser(name, today)
+
+        if user is None:
+            return {'fulfillmentText': 'Die eingegebenen Daten sind ungültig. Die Konversation wird zurückgesetzt'}
         
         return {}
 
