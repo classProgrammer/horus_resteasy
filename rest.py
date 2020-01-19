@@ -171,7 +171,7 @@ def getSickAll():
 @restService.route("/sick", methods=['GET'])
 def getSick():
     data = request.get_json()
-    name = data['name']
+    name = data['name'].lower()
 
     user = findByName(name)
 
