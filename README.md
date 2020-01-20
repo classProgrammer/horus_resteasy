@@ -5,17 +5,18 @@
 
 - "/"
   - Rest Service Up?
-
-- "/authenticate", methods=['POST']
-  - checks if a user exists
-
+  
 - "/sick", methods=['POST']
   - Post that a user is sick
 
 - "/sick", methods=['GET']
   - Get sickness entry for one user, for testing purpose only
+  
 - "/sick/all", methods=['GET']
   - Get all sickness entries, for testing purpose only
+  
+- "/vacation/all", methods=['GET']
+  - Get all vacation entries, for testing purpose only
   
 - "/dialogflow/requests", methods=['GET']
   - Look at the Dialogflow requests in detail, for develoment purpose only
