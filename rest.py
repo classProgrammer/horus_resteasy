@@ -2,16 +2,8 @@ from flask import Flask, request, make_response, jsonify, abort
 import sys
 from datetime import date
 import re
-import pymongo
-import os # for environment variables
 from bson import json_util
-
-mongo_url =  "mongodb://" + os.environ['MONGODB_NAME'] + ":" + \
-    os.environ['MONGODB_PASS'] + "@" + \
-    os.environ['MONGODB_LINK'] + "?ssl=true&replicaSet=HorusMongoDB-shard-0&authSource=admin&retryWrites=true&w=majority"
-client = pymongo.MongoClient(mongo_url)
-
-db = client.horus
+import mongodbwrapper as dbwrapper
 
 restService = Flask(__name__)
 
@@ -24,27 +16,6 @@ watson_request = [""]
 # ----------------------------------------------
 # --------------- UTILITY METHODS --------------
 # ----------------------------------------------
-def findByName(name):
-   return db.user.find({"name": name})
-
-def addSicknessToUser(name, date):
-    entry = findByName(name)
-
-    if entry is None or entry.count() == 0:
-        return None
-
-    user = entry.next()
-
-    db.sickness.update_one(
-        { 'user': user['_id']},
-        { '$addToSet': {
-                'sickdays': date
-            }
-        },
-        True) #upsert
-
-    return user
-
 def now():
     return date.today().strftime("%d.%m.%Y")
 
@@ -72,7 +43,7 @@ def postSick():
     name  = data['name'].lower()
     today = now()
 
-    user = addSicknessToUser(name, today)
+    user = dbwrapper.addSicknessToUser(name, today)
 
     if user is None:
         return "ERROR: invalid parameters", 400
@@ -97,7 +68,7 @@ def dialogflowHandler():
         name = params.get("name").get("name").lower()
         today = now()
 
-        user = addSicknessToUser(name, today)
+        user = dbwrapper.addSicknessToUser(name, today)
 
         if user is None:
             return {'fulfillmentText': 'Die eingegebenen Daten sind ungültig. Die Konversation wird zurückgesetzt'}
@@ -123,7 +94,7 @@ def watsonHandler():
         name = req.get("person_name").lower()
         today = now()
         
-        user = addSicknessToUser(name, today)
+        user = dbwrapper.addSicknessToUser(name, today)
 
         if user is None:
             return {'error': 'Die eingegebenen Daten sind ungültig.'}
@@ -142,31 +113,7 @@ def watsonWebhook():
 # ----------------------------------------------
 @restService.route("/sick/all", methods=['GET'])
 def getSickAll():
-    sicknesses = db.sickness.aggregate([
-        {
-            '$lookup': {
-                'from': 'user',
-                'localField': 'user',
-                'foreignField': '_id',
-                'as': 'userobj'
-            }
-        }, {
-            '$project': {
-                'user': {
-                    '$arrayElemAt': [
-                        '$userobj', 0
-                    ]
-                },
-                'sickdays': 1
-            }
-        }
-    ])
-    response = {}
-
-    for sick_user in sicknesses:
-        response[sick_user['user']['name']] = sick_user['sickdays']
-
-    return asJsonResponse(response), 200
+    return asJsonResponse(dbwrapper.getAllSickUsers()), 200
 
 # For dev purpose/check
 @restService.route("/sick", methods=['GET'])
@@ -174,12 +121,12 @@ def getSick():
     data = request.get_json()
     name = data['name'].lower()
 
-    user = findByName(name)
+    user = dbwrapper.findByName(name)
 
     if user is None or user.count() == 0:
         return "ERROR: invalid parameters", 400
 
-    sicknesses = db.sickness.find({"user": user.next()['_id']})
+    sicknesses = dbwrapper.findSicknessByUserId(user.next()['_id'])
 
     if sicknesses.count() == 0:
         return "No entry found", 200
