@@ -184,7 +184,7 @@ def getSick():
     if sicknesses.count() == 0:
         return "No entry found", 200
     else:
-        return json_util.dumps(sicknesses), 200
+        return json_util.dumps(sicknesses), 200, {'Content-Type': 'application/json; charset=utf-8'}
 
 # for dev purpose, to check what the framewokrs send
 @restService.route("/dialogflow/requests", methods=['GET'])
