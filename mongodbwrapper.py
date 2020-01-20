@@ -1,5 +1,6 @@
 import pymongo
 import os # for environment variables
+from datetime import datetime
 
 mongo_url =  "mongodb://" + os.environ['MONGODB_NAME'] + ":" + \
     os.environ['MONGODB_PASS'] + "@" + \
@@ -31,6 +32,25 @@ def addSicknessToUser(name, date):
         True) #upsert
 
     return user
+
+date_time_format = '%Y-%m-%dT%H:%M:%S%z'
+
+def addVacation(user_name, start, end):
+    entry = findByName(user_name)
+
+    if entry is None or entry.count() == 0:
+        return False
+
+    user = entry.next()
+
+    db.vacation.insert_one({
+        'user': user['_id'],
+        'start': datetime.strptime(start, date_time_format),
+        'end': datetime.strptime(end, date_time_format)
+    })
+
+    return True
+    # 2012-12-12T12:00:00+01:00"
 
 def getAllSickUsers():
     sicknesses = db.sickness.aggregate([

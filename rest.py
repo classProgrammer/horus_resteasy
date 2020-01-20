@@ -75,6 +75,19 @@ def dialogflowHandler():
         
         return {}
 
+    if (intent == "Urlaub nehmen"):
+        params = req.get('queryResult').get('parameters')
+        name = params.get('name').get('name').lower()
+        start = params.get('start')
+        end = params.get('end')
+
+        bookingWorked = dbwrapper.addVacation(name, start, end)
+
+        if not bookingWorked:
+            return {'fulfillmentText': 'Die eingegebenen Daten sind ungültig. Die Konversation wird zurückgesetzt'}
+
+        return {}
+
     return {'fulfillmentText': f'Intent {intent} unbekannt.'}
 
 # dialogflow request entry point
