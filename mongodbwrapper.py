@@ -78,3 +78,25 @@ def getAllSickUsers():
         result[sick_user['user']['name']] = sick_user['sickdays']
 
     return result
+
+def getAllVacations():
+    return db.vacation.aggregate([
+        {
+            '$lookup': {
+                'from': 'user',
+                'localField': 'user',
+                'foreignField': '_id',
+                'as': 'user'
+            }
+        }, {
+            '$project': {
+                'user': {
+                    '$arrayElemAt': [
+                        '$user', 0
+                    ]
+                },
+                'start': 1,
+                'end': 1
+            }
+        }
+    ])

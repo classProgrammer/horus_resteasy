@@ -154,3 +154,19 @@ def getRequests():
 @restService.route("/watson/requests", methods=['GET'])
 def getWatsonRequests():
     return asJsonResponse(watson_request), 200
+
+date_time_format = '%Y-%m-%dT%H:%M:%S%z'
+
+@restService.route("/vacation/all", methods=['GET'])
+def getVacationAll():
+    vacations = []
+
+    for vacation in dbwrapper.getAllVacations():
+        vacations.append({
+            'user': vacation['user']['name'],
+            'start': vacation['start'],
+            'end': vacation['end']
+        })
+
+
+    return asJsonResponse(vacations), 200
